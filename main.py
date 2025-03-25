@@ -121,7 +121,7 @@ def main():
 
     # Display explanation persistently below chat history.
     if st.session_state.latest_explanation:
-        with st.expander("View Explanation"):
+        with st.expander("View Explanation", expanded=True):
             st.write(st.session_state.latest_explanation)
 
     # Display the final query using st.code (which includes a built-in copy button).
