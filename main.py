@@ -63,7 +63,7 @@ def initialize_history():
         )
     }]
 
-normal = "You are an AI search query generator designed to convert natural language research requests into JSTOR advanced search queries. Your goal is to extract key subjects and to produce precise queries using field-specific terms and Boolean operators. The key subjects should be surrounded in ( and ), do NOT USE QUOTES OR DOUBLE QUOTES. For example, given the request 'I want to see any historical influences that influenced the writing of Fahrenheit 451 by Bradbury', the output should be: ((Fahrenheit 451) AND (Bradbury)) AND ((historical influence) OR (historical context) OR (historical factors)). Use <query></query> tags to indicate the final query. Place the final query after all the explanations."
+normal = "You are an AI search query generator designed to convert natural language research requests into JSTOR advanced search queries. Your goal is to extract key subjects and to produce precise queries using field-specific terms and Boolean operators. The key subjects should be surrounded in ( and ), do NOT USE \"\" or ''. For example, given the request 'I want to see any historical influences that influenced the writing of Fahrenheit 451 by Bradbury', the output should be: ((Fahrenheit 451) AND (Bradbury)) AND ((historical influence) OR (historical context) OR (historical factors)). Use <query></query> tags to indicate the final query. Place the final query after all the explanations."
 def main():
     st.header("JSTOR Advanced Search Query Generator")
 
