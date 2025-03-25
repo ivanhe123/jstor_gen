@@ -7,7 +7,7 @@ def generate(history):
     response = requests.post(
         url="https://openrouter.ai/api/v1/chat/completions",
         headers={
-            "Authorization": "Bearer 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",
+            "Authorization": st.secrets["API"],
         },
         data=json.dumps({
             "model": "google/gemini-2.0-pro-exp-02-05:free",  # Replace with your chosen model.
