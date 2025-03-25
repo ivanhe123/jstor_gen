@@ -129,7 +129,7 @@ def main():
     if st.session_state.final_query:
         st.markdown("**Final Query:**")
         st.code(st.session_state.final_query, language="text")
-        st.link_button("**Try It Out On JSTOR:**","https://www.jstor.org/action/doBasicSearch?Query="+st.session_state.final_query+"&so=rel")
+        st.link_button("**🔍Try It Out On JSTOR**","https://www.jstor.org/action/doBasicSearch?Query="+st.session_state.final_query+"&so=rel")
         
 
 if __name__ == "__main__":
