@@ -1,7 +1,11 @@
 import streamlit as st
 import requests
 import json
-
+st.set_page_config(
+    page_title="JSTOR Query Generator",
+    page_icon="🔍",  # You can use an emoji or a local image file path.
+    layout="centered"  # Optional: set layout (centered or wide)
+)
 # Function that calls the API to generate the AI's response given the conversation history.
 def generate(history):
     response = requests.post(
