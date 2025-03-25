@@ -52,6 +52,8 @@ def display_history(history):
             text = message["content"]
         text=text.replace(normal,"")
         st.chat_message(role).write(text)
+        st.write(role)
+        
 
 # Function to initialize/reinitialize the conversation history with the engineered prompt.
 def initialize_history():
