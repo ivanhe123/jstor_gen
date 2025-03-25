@@ -14,7 +14,7 @@ def generate(history):
             "messages": history
         })
     )
-    st.write(response.json())
+    st.write(st.secrets["API"])
     res = response.json()["choices"][0]["message"]
     history.append({
         "role": res["role"],
