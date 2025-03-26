@@ -5,7 +5,7 @@ import re # Import regular expressions
 import urllib.parse # Import URL encoding
 
 st.set_page_config(
-    page_title="Advanced Search Query Generator",
+    page_title="Advanced Academic Search Query Generator",
     page_icon="🔍",
     layout="wide" # Changed to wide for potentially longer lists of queries
 )
