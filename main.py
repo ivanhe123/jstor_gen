@@ -138,7 +138,7 @@ def initialize_history():
 
 # --- Main App Logic ---
 def main():
-    st.header("🔎 Advanced Search Query Generator")
+    st.header("🔎 Advanced Academic Search Query Generator")
 
     # --- Session State Initialization ---
     if "history" not in st.session_state:
