@@ -14,7 +14,7 @@ def generate(history):
             "Authorization": "Bearer "+st.secrets["API"],
         },
         data=json.dumps({
-            "model": "google/gemini-2.0-pro-exp-02-05:free",  # Replace with your chosen model.
+            "model": "google/gemini-2.5-pro-exp-03-25:free",  # Replace with your chosen model.
             "messages": history
         })
     )
