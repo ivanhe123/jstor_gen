@@ -1,14 +1,13 @@
 import streamlit as st
 import requests
 import json
-import re  # Import regular expressions
-import urllib.parse  # Import URL encoding
+import re # Import regular expressions
+import urllib.parse # Import URL encoding
 
-# --- Page Configuration (Set First) ---
 st.set_page_config(
     page_title="Advanced Search Query Generator",
     page_icon="🔍",
-    layout="wide" # Use wide layout for potentially longer lists of queries
+    layout="wide" # Changed to wide for potentially longer lists of queries
 )
 
 # --- Platform Specific Prompts ---
@@ -55,77 +54,87 @@ GOOGLE_SCHOLAR_SYSTEM_PROMPT = GOOGLE_SCHOLAR_SYNTAX_RULES # Base prompt, instru
 
 # --- API Call Function ---
 def generate(history):
-    """Calls the OpenRouter API to generate the AI's response."""
+    # Ensure the API key is available
     api_key = st.secrets.get("API")
     if not api_key:
-        st.error("API key not found. Please set the 'API' secret in Streamlit.")
-        return None # Return None to indicate failure
+        st.error("API key not found. Please configure secrets.")
+        return None # Return None or raise an error
 
     try:
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json" # Added Content-Type header
             },
             data=json.dumps({
-                "model": "google/gemini-pro", # Using a standard model
+                "model": "google/gemini-pro", # Switched to a known non-experimental model
                 "messages": history,
-                # "temperature": 0.7, # Optional: Adjust creativity
-            }),
-            timeout=60 # Add a timeout (in seconds)
+                # Add other parameters like temperature if needed
+                # "temperature": 0.7,
+            })
         )
-        response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
-
+        response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+        
         response_data = response.json()
-
+        
+        # Check if 'choices' is in the response and not empty
         if "choices" in response_data and response_data["choices"]:
             res = response_data["choices"][0]["message"]
-            # Add assistant's response back to a *copy* of history to return
-            # Avoid modifying the list passed in directly if it's used elsewhere
-            updated_history = history + [{
-                "role": res.get("role", "assistant"),
+            # Add assistant's response back to history
+            history.append({
+                "role": res.get("role", "assistant"), # Use .get for safety
                 "content": res.get("content", "")
-            }]
-            return updated_history
+            })
+            return history
         else:
-            st.error(f"API response missing 'choices'. Response: {response_data}")
-            return None # Indicate failure
+            # Handle cases where response might be missing 'choices' (e.g., content filtering)
+            st.error(f"API response did not contain expected data. Response: {response_data}")
+            # Optionally remove the last user message from history if generation failed
+            if history and history[-1]["role"] == "user":
+                 history.pop()
+            return history # Return history as it was before the failed attempt
 
-    except requests.exceptions.Timeout:
-        st.error("API request timed out. Please try again.")
-        return None
     except requests.exceptions.RequestException as e:
         st.error(f"API request failed: {e}")
-        return None
+        # Optionally remove the last user message from history if generation failed
+        if history and history[-1]["role"] == "user":
+             history.pop()
+        return history # Return history as it was before the failed attempt
     except json.JSONDecodeError:
-        st.error(f"Failed to decode API response. Response text: {response.text}")
-        return None
-    except Exception as e:
-        st.error(f"An unexpected error occurred during API call: {e}")
-        return None
+        st.error(f"Failed to decode API response: {response.text}")
+        if history and history[-1]["role"] == "user":
+             history.pop()
+        return history
+    except Exception as e: # Catch any other unexpected errors
+        st.error(f"An unexpected error occurred: {e}")
+        if history and history[-1]["role"] == "user":
+             history.pop()
+        return history
 
 # --- History Management ---
 def newMsgToHistory(msg, history):
-    """Appends a new user message to the history list."""
+    # Simple append now, system prompt handled separately
     history.append({
         "role": "user",
-        "content": msg
+        "content": msg # User message is just the text input now
     })
     return history
 
+# A helper function to display the chat history, skipping system messages
 def display_history(history):
-    """Displays the chat history, skipping system messages."""
     for message in history:
         if message["role"] == "system":
             continue
         role = message["role"]
-        content = message.get("content", "") # Use .get for safety
+        content = message["content"]
+        # Simple display, assuming content is always text for now
         st.chat_message(role).write(content)
 
+# Function to initialize/reinitialize the conversation history
+# System prompt is NOT added here, it's added dynamically before API call
 def initialize_history():
-    """Initializes an empty conversation history."""
-    return []
+    return [] # Start with an empty history
 
 # --- Main App Logic ---
 def main():
@@ -148,28 +157,27 @@ def main():
         st.subheader("⚙️ Settings")
 
         # Platform Selection Dropdown
-        # Use a temporary variable to detect change
-        selected_platform = st.selectbox(
+        new_platform = st.selectbox(
             "Select Search Platform:",
             ("JSTOR", "Google Scholar"),
-            index=["JSTOR", "Google Scholar"].index(st.session_state.search_platform),
-            key="platform_selector"
+            index=["JSTOR", "Google Scholar"].index(st.session_state.search_platform), # Set current value
+            key="platform_selector" # Assign a key for stability
         )
-        # Check if the platform selection has changed
-        if selected_platform != st.session_state.search_platform:
-            st.session_state.search_platform = selected_platform
-            # Clear results and history when platform changes for clarity
+        # If platform changed, update state and clear old results
+        if new_platform != st.session_state.search_platform:
+            st.session_state.search_platform = new_platform
             st.session_state.latest_explanation = ""
             st.session_state.query_variations = []
-            st.session_state.history = initialize_history()
-            st.rerun() # Rerun immediately to reflect the change and clear display
+            st.session_state.history = initialize_history() # Optionally clear history on platform change
+            st.rerun() # Rerun to reflect changes immediately
+
 
         # Query Variations Slider
         st.session_state.num_variations = st.slider(
             "Number of Query Variations:",
             min_value=1,
             max_value=10,
-            value=st.session_state.num_variations,
+            value=st.session_state.num_variations, # Set current value
             step=1
         )
 
@@ -184,112 +192,107 @@ def main():
     # --- Main Area ---
     st.info(f"Generating queries for: **{st.session_state.search_platform}** | Variations requested: **{st.session_state.num_variations}**")
 
-    # Display chat history (current state)
+
+    # Display chat history (skipping the system prompt)
     display_history(st.session_state.history)
 
-    # Get new user message input
+    # Get new user message
     user_input = st.chat_input(f"I want to research on {st.session_state.search_platform} about...")
 
     if user_input:
-        # 1. Update history with user message for display *before* API call
+        # Add user message to history for display
         st.session_state.history = newMsgToHistory(user_input, st.session_state.history)
-        # Immediately display the user's message
         st.chat_message("user").write(user_input)
 
-        # 2. Prepare for API Call
+        # --- Prepare for API Call ---
         # Determine the correct base system prompt
         base_system_prompt = JSTOR_SYSTEM_PROMPT if st.session_state.search_platform == "JSTOR" else GOOGLE_SCHOLAR_SYSTEM_PROMPT
+
         # Format the instruction for multiple queries
         multi_query_formatted_instruction = MULTI_QUERY_INSTRUCTION.format(
             num_variations=st.session_state.num_variations,
             platform_name=st.session_state.search_platform
         )
-        # Construct the message list for the API call
+
+        # Combine base prompt, multi-query instruction, and the latest user input
+        # We send the system prompt + instruction as the *first* message in a *temporary* list for the API
         api_call_history = [
             {
                 "role": "system",
                 "content": base_system_prompt + "\n" + multi_query_formatted_instruction
             }
         ]
-        # Append actual conversation history (filtering out any stray system messages)
+        # Append the actual conversation history (user messages and previous assistant replies)
+        # Filter out any previous system messages just in case
         api_call_history.extend([msg for msg in st.session_state.history if msg["role"] != "system"])
 
-        # 3. Call API and Process Response
+
+        # Generate the AI's response
         with st.spinner(f"Generating {st.session_state.num_variations} query variation(s) for {st.session_state.search_platform}..."):
-            # Pass the constructed history to the API
-            response_history = generate(api_call_history)
+            # Pass the specifically constructed history to the API
+            updated_history = generate(api_call_history) # Pass the temporary history
 
-            # If API call was successful and returned history with an assistant response
-            if response_history and response_history[-1]["role"] == "assistant":
-                # Get the latest assistant response
-                assistant_response = response_history[-1]
-                # Add *only* the assistant's response to the persistent session state history
-                st.session_state.history.append(assistant_response)
+            # If API call was successful and returned updated history
+            if updated_history and updated_history[-1]["role"] == "assistant":
+                 # Add only the latest assistant response to the *permanent* session state history
+                 st.session_state.history.append(updated_history[-1])
 
-                # Parse the content of the assistant's response
-                response_text = assistant_response.get("content", "")
+                 # --- Parse the Response ---
+                 last_message = updated_history[-1]
+                 response_text = last_message.get("content", "")
 
-                # Extract explanation (text before the first <query> tag)
-                first_query_tag_index = response_text.find("<query>")
-                if first_query_tag_index != -1:
-                    st.session_state.latest_explanation = response_text[:first_query_tag_index].strip()
-                else:
-                    # If no query tags, assume whole response is explanation or error message
-                    st.session_state.latest_explanation = response_text.strip()
-                    st.session_state.query_variations = [] # Clear queries if none found
+                 # Extract explanation (text before the first <query> tag)
+                 first_query_tag_index = response_text.find("<query>")
+                 if first_query_tag_index != -1:
+                     st.session_state.latest_explanation = response_text[:first_query_tag_index].strip()
+                 else:
+                     # If no query tags found, assume the whole response is explanation (or an error message from the AI)
+                     st.session_state.latest_explanation = response_text.strip()
+                     st.session_state.query_variations = [] # Clear previous queries if none found
 
-                # Extract all queries using regex (DOTALL matches newlines)
-                queries_found = re.findall(r"<query>(.*?)</query>", response_text, re.DOTALL)
-                st.session_state.query_variations = [q.strip() for q in queries_found]
+                 # Extract all queries using regex
+                 # re.DOTALL makes '.' match newline characters as well
+                 queries_found = re.findall(r"<query>(.*?)</query>", response_text, re.DOTALL)
+                 # Clean up whitespace within each found query
+                 st.session_state.query_variations = [q.strip() for q in queries_found]
+
 
             else:
-                 # API call failed or returned unexpected format
-                 st.error("Failed to generate queries. Please check the error message above or try again.")
-                 # Clear previous results on failure
+                 # Handle API failure - error messages are shown by generate()
                  st.session_state.latest_explanation = ""
                  st.session_state.query_variations = []
-                 # Optionally remove the last user message if generation failed? No, keep it for context.
 
-        # 4. Rerun to display the new assistant message and results
-        # This is crucial - it ensures the whole page redraws with updated state
-        st.rerun()
 
-    # --- Display Results ---
-    # This section runs *every time* the script runs (including after st.rerun)
-    # It reads the *current* state of latest_explanation and query_variations
+    # --- Display Results --- (Outside the user_input block to persist display)
 
-    # Display explanation
+    # Display explanation persistently below chat history
     if st.session_state.latest_explanation:
         with st.expander("View Explanation", expanded=False): # Default collapsed
             st.write(st.session_state.latest_explanation)
 
-    # Display the generated query variations
+    # Display the final query variations
     if st.session_state.query_variations:
         st.markdown("---") # Separator
         st.markdown(f"**Generated Query Variations for {st.session_state.search_platform}:**")
 
         for i, query in enumerate(st.session_state.query_variations):
-            if query: # Only display if query is not empty
-                st.markdown(f"**Variation {i+1}:**")
-                st.code(query, language="text") # Use st.code for copy button
+            st.markdown(f"**Variation {i+1}:**")
+            st.code(query, language="text")
 
-                try:
-                    # URL encode the query safely
-                    encoded_query = urllib.parse.quote_plus(query)
+            # URL encode the query for the link button
+            encoded_query = urllib.parse.quote_plus(query)
 
-                    # Generate platform-specific link button
-                    if st.session_state.search_platform == "JSTOR":
-                        button_label = f"🔍 Try Variation {i+1} on JSTOR"
-                        button_url = f"https://www.jstor.org/action/doBasicSearch?Query={encoded_query}&so=rel"
-                    else: # Google Scholar
-                        button_label = f"🔍 Try Variation {i+1} on Google Scholar"
-                        button_url = f"https://scholar.google.com/scholar?q={encoded_query}"
+            # Generate platform-specific link button
+            if st.session_state.search_platform == "JSTOR":
+                button_label = f"🔍 Try Variation {i+1} on JSTOR"
+                button_url = f"https://www.jstor.org/action/doBasicSearch?Query={encoded_query}&so=rel"
+            else: # Google Scholar
+                button_label = f"🔍 Try Variation {i+1} on Google Scholar"
+                button_url = f"https://scholar.google.com/scholar?q={encoded_query}"
 
-                    st.link_button(button_label, button_url) # Corrected line - key argument removed
-                    st.markdown("---") # Separator between variations
-                except Exception as e:
-                    st.error(f"Error creating link for Variation {i+1}: {e}") # Handle potential errors during URL encoding/button creation
+            st.link_button(button_label, button_url)
+            st.markdown("---") # Separator between variations
 
-# --- Entry Point ---
+
 if __name__ == "__main__":
     main()
