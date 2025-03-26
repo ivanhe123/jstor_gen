@@ -285,7 +285,7 @@ def main():
                         button_label = f"🔍 Try Variation {i+1} on Google Scholar"
                         button_url = f"https://scholar.google.com/scholar?q={encoded_query}"
 
-                    st.link_button(button_label, button_url, key=f"btn_{i}_{query[:10]}") # Add unique key
+                    st.link_button(button_label, button_url) # Corrected line - key argument removed
                     st.markdown("---") # Separator between variations
                 except Exception as e:
                     st.error(f"Error creating link for Variation {i+1}: {e}") # Handle potential errors during URL encoding/button creation
