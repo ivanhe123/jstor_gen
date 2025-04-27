@@ -68,7 +68,7 @@ def generate(history):
                 "Content-Type": "application/json" # Added Content-Type header
             },
             data=json.dumps({
-                "model": "google/gemini-pro", # Switched to a known non-experimental model
+                "model": "moonshotai/kimi-vl-a3b-thinking:free", # Switched to a known non-experimental model
                 "messages": history,
                 # Add other parameters like temperature if needed
                 # "temperature": 0.7,
